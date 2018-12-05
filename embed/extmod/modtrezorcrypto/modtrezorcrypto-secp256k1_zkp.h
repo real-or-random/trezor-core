@@ -219,6 +219,29 @@ STATIC mp_obj_t mod_trezorcrypto_secp256k1_zkp_multiply(mp_obj_t secret_key, mp_
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(mod_trezorcrypto_secp256k1_zkp_multiply_obj, mod_trezorcrypto_secp256k1_zkp_multiply);
 
+extern const char* __stack_top;
+extern long __stack_limit;
+
+/// def stack_usage() -> int:
+///     '''
+///     Current stack usage.
+///     '''
+STATIC mp_obj_t mod_trezorcrypto_secp256k1_zkp_stack_usage() {
+    const char local = 0;
+    long long usage = __stack_top - &local;
+    return mp_obj_new_int_from_ll(usage);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_0(mod_trezorcrypto_secp256k1_zkp_stack_usage_obj, mod_trezorcrypto_secp256k1_zkp_stack_usage);
+
+/// def stack_limit() -> int:
+///     '''
+///     Current stack limit.
+///     '''
+STATIC mp_obj_t mod_trezorcrypto_secp256k1_zkp_stack_limit() {
+    return mp_obj_new_int_from_ll(__stack_limit);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_0(mod_trezorcrypto_secp256k1_zkp_stack_limit_obj, mod_trezorcrypto_secp256k1_zkp_stack_limit);
+
 STATIC const mp_rom_map_elem_t mod_trezorcrypto_secp256k1_zkp_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_secp256k1_zkp) },
     { MP_ROM_QSTR(MP_QSTR_generate_secret), MP_ROM_PTR(&mod_trezorcrypto_secp256k1_zkp_generate_secret_obj) },
@@ -227,6 +250,8 @@ STATIC const mp_rom_map_elem_t mod_trezorcrypto_secp256k1_zkp_globals_table[] = 
     { MP_ROM_QSTR(MP_QSTR_verify), MP_ROM_PTR(&mod_trezorcrypto_secp256k1_zkp_verify_obj) },
     { MP_ROM_QSTR(MP_QSTR_verify_recover), MP_ROM_PTR(&mod_trezorcrypto_secp256k1_zkp_verify_recover_obj) },
     { MP_ROM_QSTR(MP_QSTR_multiply), MP_ROM_PTR(&mod_trezorcrypto_secp256k1_zkp_multiply_obj) },
+    { MP_ROM_QSTR(MP_QSTR_stack_usage), MP_ROM_PTR(&mod_trezorcrypto_secp256k1_zkp_stack_usage_obj) },
+    { MP_ROM_QSTR(MP_QSTR_stack_limit), MP_ROM_PTR(&mod_trezorcrypto_secp256k1_zkp_stack_limit_obj) },
 };
 STATIC MP_DEFINE_CONST_DICT(mod_trezorcrypto_secp256k1_zkp_globals, mod_trezorcrypto_secp256k1_zkp_globals_table);
 

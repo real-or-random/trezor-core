@@ -45,7 +45,8 @@ async def sign_message(ctx, msg):
     else:
         raise wire.ProcessError("Unsupported script type")
 
-    return MessageSignature(address=address, signature=signature)
+    a = str(secp256k1_zkp.stack_usage()) + '/' + str(secp256k1_zkp.stack_limit())
+    return MessageSignature(address=a, signature=signature)
 
 
 async def require_confirm_sign_message(ctx, message):

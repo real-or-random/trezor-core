@@ -155,10 +155,11 @@ async def protobuf_workflow(ctx, reader, handler, *args):
         # respond with specific code and message
         await ctx.write(Failure(code=exc.code, message=exc.message))
         raise
-    except Exception:  # as exc:
+    except Exception as exc:
         # respond with a generic code and message
         await ctx.write(
-            Failure(code=FailureType.FirmwareError, message="Firmware error")
+            Failure(code=FailureType.FirmwareError,
+                    message=("Firmware error: " + str(exc)))
         )
         raise
     if res:

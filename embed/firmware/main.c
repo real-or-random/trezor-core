@@ -41,6 +41,9 @@
 #include "sdcard.h"
 #include "touch.h"
 
+void* __stack_top = NULL;
+long __stack_limit = 0;
+
 int main(void)
 {
     // reinitialize HAL for Trezor One
@@ -72,8 +75,10 @@ int main(void)
     printf("CORE: Preparing stack\n");
     // Stack limit should be less than real stack size, so we have a chance
     // to recover from limit hit.
-    mp_stack_set_top(&_estack);
-    mp_stack_set_limit((char*)&_estack - (char*)&_heap_end - 1024);
+    __stack_top = (void*)&_estack;
+    __stack_limit = (char*)&_estack - (char*)&_heap_end - 1024;
+    mp_stack_set_top(__stack_top);
+    mp_stack_set_limit(__stack_limit);
 
     // GC init
     printf("CORE: Starting GC\n");
