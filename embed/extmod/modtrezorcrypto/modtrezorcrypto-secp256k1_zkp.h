@@ -25,7 +25,10 @@
 #include "secp256k1_ecdh.h"
 #include "secp256k1_preallocated.h"
 #include "secp256k1_recovery.h"
+#include "secp256k1_rangeproof.h"
 
+extern const char* __stack_top;
+extern long __stack_limit;
 STATIC uint8_t g_buffer[4500] = {0};
 
 STATIC const secp256k1_context *mod_trezorcrypto_secp256k1_context(void) {
@@ -82,6 +85,13 @@ STATIC mp_obj_t mod_trezorcrypto_secp256k1_zkp_publickey(size_t n_args, const mp
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_trezorcrypto_secp256k1_zkp_publickey_obj, 1, 2, mod_trezorcrypto_secp256k1_zkp_publickey);
 
+static size_t __attribute__ ((noinline)) stack_pointer()
+{
+    unsigned char local = 0;
+    unsigned char* ptr = &local;
+
+    return (size_t) ptr;
+}
 /// def sign(secret_key: bytes, digest: bytes, compressed: bool = True) -> bytes:
 ///     '''
 ///     Uses secret key to produce the signature of the digest.
@@ -91,24 +101,54 @@ STATIC mp_obj_t mod_trezorcrypto_secp256k1_zkp_sign(size_t n_args, const mp_obj_
     mp_buffer_info_t sk, dig;
     mp_get_buffer_raise(args[0], &sk, MP_BUFFER_READ);
     mp_get_buffer_raise(args[1], &dig, MP_BUFFER_READ);
-    bool compressed = n_args < 3 || args[2] == mp_const_true;
+//    bool compressed = n_args < 3 || args[2] == mp_const_true;
     if (sk.len != 32) {
         mp_raise_ValueError("Invalid length of secret key");
     }
     if (dig.len != 32) {
         mp_raise_ValueError("Invalid length of digest");
     }
-    secp256k1_ecdsa_recoverable_signature sig;
-    uint8_t out[65];
-    int pby;
-    if (!secp256k1_ecdsa_sign_recoverable(ctx, &sig, (const uint8_t *)dig.buf, (const uint8_t *)sk.buf, NULL, NULL)) {
-        mp_raise_ValueError("Signing failed");
+//    secp256k1_ecdsa_recoverable_signature sig;
+    uint8_t out[65] = {0};
+//    int pby;
+//    if (!secp256k1_ecdsa_sign_recoverable(ctx, &sig, (const uint8_t *)dig.buf, (const uint8_t *)sk.buf, NULL, NULL)) {
+//        mp_raise_ValueError("Signing failed");
+//   }
+//    secp256k1_ecdsa_recoverable_signature_serialize_compact(ctx, &out[1], &pby, &sig);
+//    out[0] = 27 + pby + compressed * 4;
+
+    {
+        unsigned char proof[5134];
+        unsigned char blind[32] = {14};
+        secp256k1_pedersen_commitment commit;
+        uint64_t vmin = 0;
+        uint64_t val = 17;
+        size_t len = sizeof(proof);
+        /* we'll switch to dylan thomas for this one */
+        const unsigned char message[68] = "My tears are like the quiet drift / Of petals from some magic rose;";
+        size_t mlen = sizeof(message);
+        const unsigned char ext_commit[72] = "And all my grief flows from the rift / Of unremembered skies and snows.";
+        size_t ext_commit_len = sizeof(ext_commit);
+
+        int ret = secp256k1_pedersen_commit(ctx, &commit, blind, val, secp256k1_generator_h);
+        if (ret) {
+            ret = secp256k1_rangeproof_sign(ctx, proof, &len, vmin, &commit, blind, commit.data, 0, 0, val, message, mlen, ext_commit, ext_commit_len, secp256k1_generator_h);
+            if (ret) {
+                size_t stack =  stack_pointer();
+                size_t stack_top = (size_t) __stack_top;
+                size_t stack_limit = __stack_limit;
+                memcpy(out, &stack, sizeof(size_t));
+                memcpy(out+sizeof(size_t), &len, sizeof(size_t));
+                memcpy(out+2*sizeof(size_t), &stack_top, sizeof(size_t));
+                memcpy(out+3*sizeof(size_t), &stack_limit, sizeof(size_t));
+            }
+        }
     }
-    secp256k1_ecdsa_recoverable_signature_serialize_compact(ctx, &out[1], &pby, &sig);
-    out[0] = 27 + pby + compressed * 4;
+
     return mp_obj_new_bytes(out, sizeof(out));
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_trezorcrypto_secp256k1_zkp_sign_obj, 2, 3, mod_trezorcrypto_secp256k1_zkp_sign);
+
 
 /// def verify(public_key: bytes, signature: bytes, digest: bytes) -> bool:
 ///     '''
@@ -219,16 +259,14 @@ STATIC mp_obj_t mod_trezorcrypto_secp256k1_zkp_multiply(mp_obj_t secret_key, mp_
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(mod_trezorcrypto_secp256k1_zkp_multiply_obj, mod_trezorcrypto_secp256k1_zkp_multiply);
 
-extern const char* __stack_top;
-extern long __stack_limit;
 
 /// def stack_usage() -> int:
 ///     '''
 ///     Current stack usage.
 ///     '''
-STATIC mp_obj_t mod_trezorcrypto_secp256k1_zkp_stack_usage() {
+STATIC mp_obj_t __attribute__ ((noinline)) mod_trezorcrypto_secp256k1_zkp_stack_usage() {
     const char local = 0;
-    long long usage = __stack_top - &local;
+    long long usage = (size_t) &local;
     return mp_obj_new_int_from_ll(usage);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(mod_trezorcrypto_secp256k1_zkp_stack_usage_obj, mod_trezorcrypto_secp256k1_zkp_stack_usage);
